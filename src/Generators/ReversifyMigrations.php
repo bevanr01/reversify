@@ -37,7 +37,10 @@ class ReversifyMigrations
                 ->pluck('name')
                 ->toArray();
         } else {
-            $tables = DB::connection()->getDoctrineSchemaManager()->listtables();
+            $tablesObject = DB::select('SHOW TABLES');
+            $tables = array_map(function ($table) {
+                return reset($table); // Get the first value in the object
+            }, $tablesObject);
         }
 
                 

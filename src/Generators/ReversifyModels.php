@@ -38,7 +38,10 @@ class ReversifyModels
                 ->pluck('name')
                 ->toArray();
         } else {
-            $tables = DB::connection()->getDoctrineSchemaManager()->listTableNames();
+            $tablesObject = DB::select('SHOW TABLES');
+            $tables = array_map(function ($table) {
+                return reset($table); // Get the first value in the object
+            }, $tablesObject);
         }
 
         if (!$tables) {
