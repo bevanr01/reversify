@@ -11,7 +11,7 @@ class ReversifyServiceProvider extends ServiceProvider
         // Publish configuration file
         $this->publishes([
             __DIR__ . '/config/reversify.php' => config_path('reversify.php'),
-        ], 'config');
+        ], 'reversify-config');
 
         // Register command
         if ($this->app->runningInConsole()) {
