@@ -4,6 +4,7 @@ namespace Bevanr01\Reversify\Generators;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class ReversifyMigrations
 {
@@ -80,9 +81,22 @@ class ReversifyMigrations
             $softDeleteFieldsAdded = false;
 
             $hasCommonFields = false;
+            $hasTimestampFields = false;
+            $hasSoftDeleteFields = false;
+
+            $includeCommonFields = false;
+            $includeTimestampFields = false;
+            $includeSoftDeleteFields = false;
+
             foreach ($columns as $column) {
                 if (in_array($column['name'], $commonFields)) {
                     $hasCommonFields = true;
+                    break;
+                } else if (in_array($column['name'], $timestampFields)) {
+                    $hasTimestampFields = true;
+                    break;
+                } else if (in_array($column['name'], $softDeleteFields)) {
+                    $hasSoftDeleteFields = true;
                     break;
                 }
             }
@@ -90,14 +104,15 @@ class ReversifyMigrations
             foreach ($columns as $column) {
                 $columnName = $column['name'];
                 $columnType = $column['type'];
-                $isNullable = array_key_exists('nullable', $column) ? $column['nullable'] : null;
+                $primaryKey = array_key_exists('primary_key', $column) ? $column['primary_key'] : false;
+                $isNullable = array_key_exists('nullable', $column) ? $column['nullable'] : false;
                 $defaultValue = array_key_exists('default', $column) ? $column['default'] : null;
                 $extra = array_key_exists('extra', $column) ? $column['extra'] : null;
 
-                // Map MySQL types to Laravel migration methods
                 $migrationType = match (true) {
-                    str_contains($columnType, 'int') => 'integer',
+                    str_contains($columnType, 'int') && str_contains($extra, 'auto_increment') && $primaryKey => 'id',
                     str_contains($columnType, 'bigint') => 'bigInteger',
+                    str_contains($columnType, 'int') => 'integer',
                     str_contains($columnType, 'varchar') => 'string',
                     str_contains($columnType, 'text') => 'text',
                     str_contains($columnType, 'datetime') => 'dateTime',
@@ -108,65 +123,64 @@ class ReversifyMigrations
                     default => 'string', // Default to string for unmapped types
                 };
 
-                if ($this->useCommonFields) {
-                    if ($commonFieldsAdded) {
-                        if (in_array($columnName, $commonFields)) {
-                            continue;
-                        }
-                    } else {
-                        $migrationContent .= "            \$table->commonFields();\n";
-                        $commonFieldsAdded = true;
-                        if (in_array($columnName, $commonFields)) {
-                            continue;
-                        }
+                if ($hasCommonFields) {
+                    $includeCommonFields = true;
+                    $commonFieldsAdded = true;
+                    if (in_array($columnName, $commonFields)) {
+                        continue;
                     }
-                } else if ($this->useTimestamps) {
-
-                    if ($timestampFieldsAdded) {
-                        if (in_array($columnName, $timestampFields)) {
-                            continue;
-                        }
-                    } else {
-                        $migrationContent .= "            \$table->timestamps();\n";
-                        $timestampFieldsAdded = true;
-                        if (in_array($columnName, $timestampFields)) {
-                            continue;
-                        }
-                    }
-                } else if ($this->useSoftDeletes) {
-
-                    if ($softDeleteFieldsAdded) {
-                        if (in_array($columnName, $softDeleteFields)) {
-                            continue;
-                        }
-                    } else {
-                        $migrationContent .= "            \$table->softDeletes();\n";
-                        $softDeleteFieldsAdded = true;
-                        if (in_array($columnName, $softDeleteFields)) {
-                            continue;
-                        }
-                    }
-                } else {
-                    $migrationContent .= "            \$table->$migrationType('$columnName')";
-
-                    if ($extra === 'auto_increment') {
-                        $migrationContent .= "->autoIncrement()";
-                    }
-
-                    if ($columnName === 'id' && str_contains($columnType, 'int')) {
-                        $migrationContent .= "->primary()";
-                    }
-
-                    if ($isNullable) {
-                        $migrationContent .= "->nullable()";
-                    }
-
-                    if ($defaultValue !== null) {
-                        $migrationContent .= "->default('$defaultValue')";
-                    }
-
-                    $migrationContent .= ";\n";
                 }
+                
+                if ($hasTimestampFields) {
+                    $includeTimestampFields = true;
+                    $timestampFieldsAdded = true;
+                    if (in_array($columnName, $timestampFields)) {
+                        continue;
+                    }
+                }
+                
+                if ($hasSoftDeleteFields) {
+                    $includeSoftDeleteFields = true;
+                    $softDeleteFieldsAdded = true;
+                    if (in_array($columnName, $softDeleteFields)) {
+                        continue;
+                    }
+                }
+
+                $migrationContent .= "            \$table->$migrationType('$columnName')";
+
+                if (!$primaryKey && $extra === 'auto_increment') {
+                    $migrationContent .= "->autoIncrement()";
+                }
+
+                if ($columnName === 'id' && str_contains($columnType, 'int')) {
+                    $migrationContent .= "->primary()";
+                }
+
+                if ($isNullable) {
+                    $migrationContent .= "->nullable()";
+                }
+
+                if ($defaultValue !== null) {
+                    $migrationContent .= "->default('$defaultValue')";
+                }
+
+                $migrationContent .= ";\n";
+            }
+
+            if ($this->useCommonFields || $includeCommonFields) {
+                $migrationContent .= "            \$table->commonFields();\n";
+                $commonFieldsAdded = true;
+            } 
+            
+            if ($this->useTimestamps || $includeTimestampFields) {
+                $migrationContent .= "            \$table->timestamps();\n";
+                $timestampFieldsAdded = true;
+            } 
+            
+            if ($this->useSoftDeletes || $includeSoftDeleteFields) {
+                $migrationContent .= "            \$table->softDeletes();\n";
+                $softDeleteFieldsAdded = true;
             }
 
             $migrationContent .= "        });\n    }\n\n    public function down()\n    {\n        Schema::dropIfExists('$table');\n    }\n};\n";
@@ -185,16 +199,16 @@ class ReversifyMigrations
             if (DB::connection()->getDriverName() === 'sqlite') {
                 $foreignKeyResult = DB::select("PRAGMA foreign_key_list('$table');");
             } else {
-                $foreignKeyResult = DB::select("SELECT CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND REFERENCED_TABLE_NAME IS NOT NULL", [$database, $table]);
+                $foreignKeyResult = $this->getForeignKeys($database, $table);
             }
 
             foreach ($foreignKeyResult as $fkRow) {
                 $foreignKeys[] = [
                     'table' => $table,
-                    'column' => $fkRow['COLUMN_NAME'],
-                    'referenced_table' => $fkRow['REFERENCED_TABLE_NAME'],
-                    'referenced_column' => $fkRow['REFERENCED_COLUMN_NAME'],
-                    'constraint_name' => $fkRow['CONSTRAINT_NAME'],
+                    'column' => $fkRow['column_name'],
+                    'referenced_table' => $fkRow['referenced_table_name'],
+                    'referenced_column' => $fkRow['referenced_column_name'],
+                    'constraint_name' => $fkRow['constraint_name'],
                 ];
             }
 
@@ -230,6 +244,23 @@ class ReversifyMigrations
         }
     }
 
+    public function getForeignKeys($database, $table)
+    {
+        $foreignKeyResult = DB::select("SELECT CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND REFERENCED_TABLE_NAME IS NOT NULL", [$database, $table]);
+
+        // Transform the result if necessary
+        $foreignKeys = array_map(function ($foreignKey) {
+            return [
+                'constraint_name' => $foreignKey->CONSTRAINT_NAME,
+                'column_name' => $foreignKey->COLUMN_NAME,
+                'referenced_table_name' => $foreignKey->REFERENCED_TABLE_NAME,
+                'referenced_column_name' => $foreignKey->REFERENCED_COLUMN_NAME,
+            ];
+        }, $foreignKeyResult);
+
+        return $foreignKeys;
+    }
+
     protected function getTableColumns(string $table): array
     {
         if (DB::connection()->getDriverName() === 'sqlite') {
@@ -244,7 +275,18 @@ class ReversifyMigrations
             })
             ->toArray();
         } else {
-            return DB::getSchemaBuilder()->getColumnListing($table);
+            $columns = DB::select("SHOW FULL COLUMNS FROM `$table`");
+
+            return array_map(function ($column) {
+                return [
+                    'name' => $column->Field,
+                    'type' => $column->Type,
+                    'primary_key' => $column->Key === 'PRI',
+                    'nullable' => $column->Null === 'YES',
+                    'default' => $column->Default,
+                    'extra' => $column->Extra,
+                ];
+            }, $columns);
         }
     }
 }
