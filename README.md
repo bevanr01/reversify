@@ -4,7 +4,7 @@
 > Reversify is still in testing. Functionality may be unstable at best. If you would like to assist in getting this project off the ground, feel free to fork and submit pull requests for new features, bug fixes, or improvements.
 
 ![Packagist Version](https://img.shields.io/packagist/v/abevanation/reversify)
-[![Tests](https://img.shields.io/github/actions/workflow/status/abevanation/reversify/testbench.yml?branch=main)](https://github.com/abevanation/reversify/actions)
+[![Tests](https://img.shields.io/github/actions/workflow/status/bevanr01/reversify/testbench.yml?branch=main)](https://github.com/bevanr01/reversify/actions)
 ![Downloads](https://img.shields.io/packagist/dt/abevanation/reversify)
 
 
