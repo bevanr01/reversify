@@ -1,5 +1,15 @@
 # Reversify
 
+## Laravel WebSockets
+
+> **Note**  
+> Reversify is still in testing. Functionality may be unstable at best. If you would like to assist in getting this project off the ground, feel free to fork and submit pull requests for new features, bug fixes, or improvements.
+
+![Packagist Version](https://img.shields.io/packagist/v1.0.4/abevanation/reversify)
+[![Tests](https://img.shields.io/github/actions/workflow/status/abevanation/reversify/testbench.yml?branch=main)](https://github.com/abevanation/reversify/actions)
+![Downloads](https://img.shields.io/packagist/dt/abevanation/reversify)
+
+
 **Reversify** is a Laravel package designed to reverse engineer your existing database schema to create fully functional migrations, models, controllers that include relationships, traits, attributes, and more. It simplifies the process of reverse-engineering your database into Laravel components, making it ideal for legacy systems or rapid development.
 
 ---
