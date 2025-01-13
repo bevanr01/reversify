@@ -8,9 +8,9 @@ class ReversifyBlueprintMacro
 {
     protected $config;
 
-    public function __construct()
+    public function __construct($configuration, $database, $file, $content)
     {
-        $this->config = config('reversify');
+        $this->config = $configuration->getConfiguration();
     }
 
     public function generate()

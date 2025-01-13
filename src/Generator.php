@@ -2,6 +2,11 @@
 
 namespace Reversify;
 
+use Reversify\Helpers\ConfigurationHelper;
+use Reversify\Helpers\DatabaseHelper;
+use Reversify\Helpers\FileHelper;
+use Reversify\Helpers\ContentHelper;
+
 class Generator
 {
     protected $configuration;
@@ -13,11 +18,11 @@ class Generator
 
     public function __construct()
     {
-        $this->configuration = new Helpers\ConfigurationHelper();
+        $this->configuration = new ConfigurationHelper();
         $this->globalConfig = $this->configuration->getGlobalConfiguration();
-        $this->database = new Helpers\DatabaseHelper();
-        $this->file = new Helpers\FileHelper();
-        $this->content = new Helpers\ContentHelper();
+        $this->database = new DatabaseHelper();
+        $this->file = new FileHelper();
+        $this->content = new ContentHelper();
     }
 
     public function generate()
@@ -28,7 +33,7 @@ class Generator
         $this->migrations($this->configuration, $this->database, $this->file, $this->content);
         
         if ($this->globalConfig['use_common_fields']) {
-            $this->createBlueprintMacro();
+            $this->createBlueprintMacro($this->configuration, $this->database, $this->file, $this->content);
         }
     }
 
