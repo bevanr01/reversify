@@ -1,8 +1,8 @@
 <?php
 
-namespace Bevanr01\Reversify\Tests\Commands;
+namespace Reversify\Tests\Commands;
 
-use Bevanr01\Reversify\Tests\TestCase;
+use Reversify\Tests\TestCase;
 
 class ReversifyControllersTest extends TestCase
 {

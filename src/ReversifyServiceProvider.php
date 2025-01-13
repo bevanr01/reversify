@@ -1,6 +1,6 @@
 <?php
 
-namespace Bevanr01\Reversify;
+namespace Reversify;
 
 use Illuminate\Support\ServiceProvider;
 
@@ -10,7 +10,7 @@ class ReversifyServiceProvider extends ServiceProvider
     {
         // Publish configuration file
         $this->publishes([
-            __DIR__ . '/config/reversify.php' => config_path('reversify.php'),
+            __DIR__ . '/Config/reversify.php' => config_path('reversify.php'),
         ], 'reversify-config');
 
         // Register command

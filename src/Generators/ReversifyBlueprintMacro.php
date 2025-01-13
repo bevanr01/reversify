@@ -1,6 +1,6 @@
 <?php
 
-namespace Bevanr01\Reversify\Generators;
+namespace Reversify\Generators;
 
 use Illuminate\Support\Facades\File;
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace Bevanr01\Reversify\Generators;
+namespace Reversify\Generators;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -15,9 +15,9 @@ class ReversifyControllers
     protected $useTimestamps = false;
     protected $useSoftDeletes = false;
 
-    public function __construct()
+    public function __construct($configuration, $database, $file, $content)
     {
-        $this->config = config('reversify');
+        $this->config = $configuration->getConfiguration();
         $this->outputPath = $this->config['controllers']['output_directory'];
         $this->ignoreTables = $this->config['global']['ignore_tables'];
         $this->useCommonFields = $this->config['global']['use_common_fields'];

@@ -22,7 +22,7 @@
 1. Require the package via Composer:
 
    ```bash
-   composer require bevanr01/reversify
+   composer require abevanation/reversify
    ```
 
 2. Publish the configuration file:

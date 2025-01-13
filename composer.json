@@ -1,16 +1,16 @@
 {
-    "name": "bevanr01/reversify",
+    "name": "abevanation/reversify",
     "description": "Reverse engineer an existing database schema into Laravel migrations, models, services, and controllers",
     "type": "laravel-library",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Bevanr01\\Reversify\\": "src/"
+            "Reversify\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Bevanr01\\Reversify\\Tests\\": "tests/"
+            "Reversify\\Tests\\": "tests/"
         }
     },
     "authors": [
@@ -24,7 +24,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Bevanr01\\Reversify\\ReversifyServiceProvider"
+                "Reversify\\ReversifyServiceProvider"
             ]
         }
     },

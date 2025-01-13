@@ -1,9 +1,9 @@
 <?php
 
-namespace Bevanr01\Reversify\Commands;
+namespace Reversify\Commands;
 
 use Illuminate\Console\Command;
-use Bevanr01\Reversify\Generator;
+use Reversify\Generator;
 use Illuminate\Support\Facades\Log;
 
 class ReversifyMigrationsCommand extends Command

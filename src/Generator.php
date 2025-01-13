@@ -1,25 +1,33 @@
 <?php
 
-namespace Bevanr01\Reversify;
+namespace Reversify;
 
 class Generator
 {
-    protected $config;
+    protected $configuration;
+    protected $globalConfig;
     protected $globalRun = false;
+    protected $database;
+    protected $file;
+    protected $content;
 
     public function __construct()
     {
-        $this->config = config('reversify');
+        $this->configuration = new Helpers\ConfigurationHelper();
+        $this->globalConfig = $this->configuration->getGlobalConfiguration();
+        $this->database = new Helpers\DatabaseHelper();
+        $this->file = new Helpers\FileHelper();
+        $this->content = new Helpers\ContentHelper();
     }
 
     public function generate()
     {
         $this->globalRun = true;
-        $this->controllers();
-        $this->models();
-        $this->migrations();
+        $this->controllers($this->configuration, $this->database, $this->file, $this->content);
+        $this->models($this->configuration, $this->database, $this->file, $this->content);
+        $this->migrations($this->configuration, $this->database, $this->file, $this->content);
         
-        if ($this->config['global']['use_common_fields']) {
+        if ($this->globalConfig['use_common_fields']) {
             $this->createBlueprintMacro();
         }
     }
@@ -36,7 +44,7 @@ class Generator
         $migrations = new Generators\ReversifyMigrations();
         $migrations->generate();
 
-        if (!$this->globalRun && $this->config['global']['use_common_fields']) {
+        if (!$this->globalRun && $this->globalConfig['use_common_fields']) {
             $this->createBlueprintMacro();
         }
     }

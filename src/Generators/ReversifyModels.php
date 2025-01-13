@@ -1,14 +1,16 @@
 <?php
 
-namespace Bevanr01\Reversify\Generators;
+namespace Reversify\Generators;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Reversify\Helpers\DatabaseHelper;
 
 class ReversifyModels
 {
     protected $config;
+    protected $database;
     protected $outputPath;
     protected $ignoreTables;
     protected $traits;
@@ -16,9 +18,10 @@ class ReversifyModels
     protected $useTimestamps = false;
     protected $useSoftDeletes = false;
 
-    public function __construct()
+    public function __construct($configuration, $database, $file, $content)
     {
-        $this->config = config('reversify');
+        $this->config = $configuration->getConfiguration();
+        $this->database = $database;
         $this->outputPath = $this->config['models']['output_directory'];
         $this->traits = $this->config['models']['traits'];
         $this->ignoreTables = $this->config['global']['ignore_tables'];
@@ -69,7 +72,7 @@ class ReversifyModels
         $filePath = "{$this->outputPath}/{$className}.php";
 
         // Fetch the columns of the table
-        $columns = $this->getTableColumns($table);
+        $columns = $this->database->getTableColumns($table);
 
         // Generate the model content
         $content = $this->getModelContent($className, $table, $columns);
@@ -80,21 +83,7 @@ class ReversifyModels
         echo "Model created: $className (table: $table)\n";
     }
 
-    protected function getModelClassName(string $table): string
-    {
-        return ucfirst(Str::singular(str_replace('_', '', $table)));
-    }
-
-    protected function getTableColumns(string $table): array
-    {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return collect(DB::select("PRAGMA table_info('$table');"))
-                    ->pluck('name')
-                    ->toArray();
-        } else {
-            return DB::getSchemaBuilder()->getColumnListing($table);
-        }
-    }
+    
 
     protected function getModelContent(string $className, string $table, array $columns): string
     {

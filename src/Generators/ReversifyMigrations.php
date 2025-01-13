@@ -1,6 +1,6 @@
 <?php
 
-namespace Bevanr01\Reversify\Generators;
+namespace Reversify\Generators;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -9,19 +9,21 @@ use Illuminate\Support\Facades\Schema;
 class ReversifyMigrations
 {
     protected $config;
-    protected $filePrefix;
+    protected $database;
+    protected $file;
+    protected $content;
     protected $outputPath;
-    protected $ignoreTables;
     protected $useCommonFields = false;
     protected $useTimestamps = false;
     protected $useSoftDeletes = false;
 
-    public function __construct()
+    public function __construct($configuration, $database, $file, $content)
     {
-        $this->config = config('reversify');
-        $this->outputPath = $this->config['migrations']['output_directory'];
-        $this->filePrefix = $this->config['migrations']['file_prefix'];
-        $this->ignoreTables = $this->config['global']['ignore_tables'];
+        $this->config = $configuration->getConfiguration();
+        $this->database = $database;
+        $this->file = $file;
+        $this->content = $content;
+        
         $this->useCommonFields = $this->config['global']['use_common_fields'];
         $this->useTimestamps = $this->config['global']['use_timestamps'];
         $this->useSoftDeletes = $this->config['global']['use_soft_deletes'];
@@ -29,22 +31,9 @@ class ReversifyMigrations
     
     public function generate()
     {
-        if (!is_dir($this->outputPath)) {
-            mkdir($this->outputPath, 0777, true);
-        }
+        $directoryExists = $this->file->checkDirectory();
+        $tables = $this->database->getTables();
 
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            $tables = collect(DB::select('SELECT name FROM sqlite_master WHERE type = "table"'))
-                ->pluck('name')
-                ->toArray();
-        } else {
-            $tablesObject = DB::select('SHOW TABLES');
-            $tables = array_map(function ($table) {
-                return reset($table); // Get the first value in the object
-            }, $tablesObject);
-        }
-
-                
         if (!$tables) {
             die("No tables exist or could not fetch.");
         }
@@ -54,12 +43,11 @@ class ReversifyMigrations
 
         foreach ($tables as $table) {
 
-            if (in_array($table, $this->ignoreTables)) {
+            if ($this->file->shouldIgnore($table)) {
                 echo "Skipping model generation for table: $table\n";
                 continue;
             }
             
-            // Fetch table columns
             $columns = $this->getTableColumns($table);
 
             if (!$columns) {
@@ -68,8 +56,7 @@ class ReversifyMigrations
             }
 
             // Start building the migration file
-            $migrationContent = "<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\nreturn new class extends Migration {\n";
-            $migrationContent .= "    public function up()\n    {\n        Schema::create('$table', function (Blueprint \$table) {\n";
+            $migrationContent = $this->content->getBaseMigrationContent($table);
 
             $commonFields = $this->config['global']['common_fields'];
             $commonFieldsAdded = false;
@@ -92,10 +79,14 @@ class ReversifyMigrations
                 if (in_array($column['name'], $commonFields)) {
                     $hasCommonFields = true;
                     break;
-                } else if (in_array($column['name'], $timestampFields)) {
+                } 
+                
+                if (in_array($column['name'], $timestampFields)) {
                     $hasTimestampFields = true;
                     break;
-                } else if (in_array($column['name'], $softDeleteFields)) {
+                } 
+                
+                if (in_array($column['name'], $softDeleteFields)) {
                     $hasSoftDeleteFields = true;
                     break;
                 }
@@ -186,31 +177,11 @@ class ReversifyMigrations
             $migrationContent .= "        });\n    }\n\n    public function down()\n    {\n        Schema::dropIfExists('$table');\n    }\n};\n";
 
             // Write the migration file
-            $timestamp = date('Y_m_d_His');
-            $migrationFilename = $this->filePrefix === 'timestamp' ? $this->outputPath . '/' . date('Y_m_d_His') . "_create_{$table}_table.php" : $this->outputPath . '/' . $index . "_create_{$table}_table.php";
-            File::put($migrationFilename, $migrationContent);
+            $this->file->createMigrationFile($migrationContent, 'table', $index);
 
             echo "Migration file created for table $table: $migrationFilename\n";
 
-            $database = DB::connection()->getDatabaseName();
-
-            $foreignKeyResult = [];
-
-            if (DB::connection()->getDriverName() === 'sqlite') {
-                $foreignKeyResult = DB::select("PRAGMA foreign_key_list('$table');");
-            } else {
-                $foreignKeyResult = $this->getForeignKeys($database, $table);
-            }
-
-            foreach ($foreignKeyResult as $fkRow) {
-                $foreignKeys[] = [
-                    'table' => $table,
-                    'column' => $fkRow['column_name'],
-                    'referenced_table' => $fkRow['referenced_table_name'],
-                    'referenced_column' => $fkRow['referenced_column_name'],
-                    'constraint_name' => $fkRow['constraint_name'],
-                ];
-            }
+            $foreignKeys = $this->database->getForeignKeys($table);
 
             $index++;
         }
@@ -236,57 +207,10 @@ class ReversifyMigrations
             $migrationContent .= "    }\n};\n";
 
             // Write the foreign key migration file
-            $timestamp = date('Y_m_d_His', strtotime('+1 second'));
-            $migrationFilename = $this->filePrefix === 'timestamp' ? $this->outputPath . '/' . date('Y_m_d_His') . "_add_foreign_keys.php" : $this->outputPath . '/' . $index . "_add_foreign_keys.php";
-            File::put($migrationFilename, $migrationContent);
+            
+            $this->file->createMigrationFile($migrationContent, 'foreign_keys', $index);
 
             echo "Foreign key migration file created: $migrationFilename\n";
-        }
-    }
-
-    public function getForeignKeys($database, $table)
-    {
-        $foreignKeyResult = DB::select("SELECT CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND REFERENCED_TABLE_NAME IS NOT NULL", [$database, $table]);
-
-        // Transform the result if necessary
-        $foreignKeys = array_map(function ($foreignKey) {
-            return [
-                'constraint_name' => $foreignKey->CONSTRAINT_NAME,
-                'column_name' => $foreignKey->COLUMN_NAME,
-                'referenced_table_name' => $foreignKey->REFERENCED_TABLE_NAME,
-                'referenced_column_name' => $foreignKey->REFERENCED_COLUMN_NAME,
-            ];
-        }, $foreignKeyResult);
-
-        return $foreignKeys;
-    }
-
-    protected function getTableColumns(string $table): array
-    {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return collect(DB::select("PRAGMA table_info('$table');"))
-            ->map(function ($column) {
-                return [
-                    'name' => $column->name,
-                    'type' => $column->type,
-                    'nullable' => !$column->notnull,
-                    'default' => $column->dflt_value,
-                ];
-            })
-            ->toArray();
-        } else {
-            $columns = DB::select("SHOW FULL COLUMNS FROM `$table`");
-
-            return array_map(function ($column) {
-                return [
-                    'name' => $column->Field,
-                    'type' => $column->Type,
-                    'primary_key' => $column->Key === 'PRI',
-                    'nullable' => $column->Null === 'YES',
-                    'default' => $column->Default,
-                    'extra' => $column->Extra,
-                ];
-            }, $columns);
         }
     }
 }

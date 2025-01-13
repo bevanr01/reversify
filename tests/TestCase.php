@@ -1,6 +1,6 @@
 <?php
 
-namespace Bevanr01\Reversify\Tests;
+namespace Reversify\Tests;
 
 use Orchestra\Testbench\TestCase as BaseTestCase;
 use Illuminate\Contracts\Debug\ExceptionHandler;
@@ -43,7 +43,7 @@ abstract class TestCase extends BaseTestCase
     protected function getPackageProviders($app)
     {
         return [
-            \Bevanr01\Reversify\ReversifyServiceProvider::class,
+            \Reversify\ReversifyServiceProvider::class,
         ];
     }
 
