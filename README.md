@@ -1,7 +1,5 @@
 # Reversify
 
-## Laravel WebSockets
-
 > **Note**  
 > Reversify is still in testing. Functionality may be unstable at best. If you would like to assist in getting this project off the ground, feel free to fork and submit pull requests for new features, bug fixes, or improvements.
 
